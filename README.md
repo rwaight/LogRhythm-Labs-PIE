@@ -2,10 +2,9 @@
 
     Phishing Intelligence Engine
     LogRhythm Security Operations
-    greg . foss @ logrhythm . com
-    v1.0  --  November, 2017
+    v2.0  --  August, 2018
 
-Copyright 2017 LogRhythm Inc. - See licensing details below
+Copyright 2018 LogRhythm Inc. - See licensing details below
 
 ## [About]
     
@@ -13,7 +12,7 @@ Copyright 2017 LogRhythm Inc. - See licensing details below
 
 The Phishing Intelligence Engine (PIE) is a framework that will assist with the detection and response to phishing attacks. An Active Defense framework built around Office 365, that continuously evaluates Message Trace logs for malicious contents, and dynamically responds as threats are identified or emails are reported.
 
-##### This framework is not officially supported by LogRhythm - use at your own risk!
+##### :rotating_light: This framework is not officially supported by LogRhythm - use at your own risk! :rotating_light:
 
 #### Features:
 
@@ -26,7 +25,9 @@ The Phishing Intelligence Engine (PIE) is a framework that will assist with the 
 
 ## [Additional Information]
 
-LogRhythm Blog Post: https://logrhythm.com/blog/phishing-intelligence-engine-open-source-release/
+Blog Post: https://logrhythm.com/blog/phishing-intelligence-engine-open-source-release/
+
+BSides Vancouver 2018 Slides and Video: https://www.slideshare.net/heinzarelli/pie-bsides-vancouver-2018
 
 BlueHat v17 Slides: https://www.slideshare.net/heinzarelli/phishing-intelligence-engine-bluehat-v17
 
@@ -36,6 +37,10 @@ Security Weekly Webcast: https://www.youtube.com/watch?v=2oGMoGr4qBI
 
 
 ## [Install and Usage]
+
+Installation Walkthrough: https://www.youtube.com/watch?v=19bHJL0g154&feature=youtu.be
+
+Configuration Guide (LogRhythm Community Access Required): https://community.logrhythm.com/t5/SIEM-articles/Phishing-Intelligence-Engine-PIE-Configuration-Guide/ta-p/39931
 
 There are multiple aspects of this framework that all work together to detect and respond to Phishing attacks:
 
@@ -74,10 +79,12 @@ High level overview of the PIE architecture and workflow:
 ![PIE Architecture](/images/PIE-Architecture.png)
 
 
-## [Thanks]
+## [Thanks!]
 
 This project would not be a success without the folks below and the various third-party API integration providers. Thank you!
 
+- [Jtekt](https://github.com/Jtekt) - Shodan Plugin, O365 Safelinks, bug fixes, and LR 7.3 API integration
+- robert waight - LogRhythm Documentation, automated mailbox auditing, and various bug fixes
 - bruce deakyne -  Cisco AMP Threat GRID Plugin
 - jake reynolds - OpenDNS Plugin
 - julian crowley - Message Tracking Log Parsing
@@ -88,9 +95,14 @@ This project would not be a success without the folks below and the various thir
 - SwiftOnSecurity - Phishing RegEx
 
 
+## [Lead Author]
+
+[Greg Foss](https://github.com/gfoss) - formerly of LogRhythm Labs
+
+
 ## [License]
 
-Copyright 2017 LogRhythm Inc.   
+Copyright 2018 LogRhythm Inc.   
 
 PowerShell code is Licensed under the MIT License. See LICENSE file in the project root for full license information.
 

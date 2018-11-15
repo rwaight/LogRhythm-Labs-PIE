@@ -15,7 +15,7 @@
 .SYNOPSIS
     
     Collection of useful commands for easy integration with Office 365 and the LogRhythm SIEM.
-    Automate the full response to phishing attacks, and dynamically.
+    Automate the full response to phishing attacks, and dynamically 
 
 .PREREQUISITE
 
@@ -25,31 +25,31 @@
 .USAGE
 
     Capture A Specific Email:
-    PS C:\> .\O365Ninja-SRP.ps1 -getMail -targetUser "<user.name>" -sender "<spammer>"
+    PS C:\> .\O365Ninja.ps1 -getMail -targetUser "<user.name>" -sender "<spammer>"
 
     Quarantine A Specific Email:
-    PS C:\> .\O365Ninja-SRP.ps1 -getMail -targetUser "<user.name>" -sender "<spammer>" -nuke
+    PS C:\> .\O365Ninja.ps1 -getMail -targetUser "<user.name>" -sender "<spammer>" -nuke
 
         Available switches for targeted mail capture:
             -sender, -subject, -recipient
     
     Capture All Emails:
-    PS C:\> .\O365Ninja-SRP.ps1 -scrapeMail -sender "<spammer>"
+    PS C:\> .\O365Ninja.ps1 -scrapeMail -sender "<spammer>"
 
     Quarantine All Emails Matching Defined Criteria:
-    PS C:\> .\O365Ninja-SRP.ps1 -scrapeMail -sender "<spammer>" -nuke
+    PS C:\> .\O365Ninja.ps1 -scrapeMail -sender "<spammer>" -nuke
 
         Available switches for quarantine / extraction:
             -sender, -subject, -recipient
     
     Block Sender for specific user:
-    PS C:\> .\O365Ninja-SRP.ps1 -blockSender -sender "<spammer>" -recipient "<recipient>"
+    PS C:\> .\O365Ninja.ps1 -blockSender -sender "<spammer>" -recipient "<recipient>"
 
     Block Sender for the whole company:
-    PS C:\> .\O365Ninja-SRP.ps1 -blockSender -sender "<spammer>"
+    PS C:\> .\O365Ninja.ps1 -blockSender -sender "<spammer>"
     
     Reset End User's Password:
-    PS C:\> .\O365Ninja-SRP.ps1 -resetPassword -targetMailbox "User.Name"
+    PS C:\> .\O365Ninja.ps1 -resetPassword -targetMailbox "User.Name"
 
     ************************************************************
 
@@ -75,7 +75,9 @@ param(
     [string]$recipient,
     [string]$subject,
     [string]$past,
+    [string]$spammerList,
     [switch]$scrapeMail,
+    [switch]$appendToList,
     [switch]$getMail,
     [switch]$resetPassword,
     [switch]$blockSender,
@@ -84,37 +86,37 @@ param(
 
 
 $banner = @"
-O365 Ninja - Catching the phish..."@
+O365 Ninja"@
 
 $usage = @"
 USAGE:
 
     Capture A Specific Email:
-    PS C:\> .\O365Ninja-SRP.ps1 -getMail -targetUser "<user.name>" -sender "<spammer>"
+    PS C:\> .\O365Ninja.ps1 -getMail -targetUser "<user.name>" -sender "<spammer>"
 
     Quarantine A Specific Email:
-    PS C:\> .\O365Ninja-SRP.ps1 -getMail -targetUser "<user.name>" -sender "<spammer>" -nuke
+    PS C:\> .\O365Ninja.ps1 -getMail -targetUser "<user.name>" -sender "<spammer>" -nuke
 
         Available switches for targeted mail capture:
             -sender, -subject, -recipient
     
     Capture All Emails:
-    PS C:\> .\O365Ninja-SRP.ps1 -scrapeMail -sender "<spammer>"
+    PS C:\> .\O365Ninja.ps1 -scrapeMail -sender "<spammer>"
 
     Quarantine All Emails Matching Defined Criteria:
-    PS C:\> .\O365Ninja-SRP.ps1 -scrapeMail -sender "<spammer>" -nuke
+    PS C:\> .\O365Ninja.ps1 -scrapeMail -sender "<spammer>" -nuke
 
         Available switches for quarantine / extraction:
             -sender, -subject, -recipient
     
     Block Sender for specific user:
-    PS C:\> .\O365Ninja-SRP.ps1 -blockSender -sender "<spammer>" -recipient "<recipient>"
+    PS C:\> .\O365Ninja.ps1 -blockSender -sender "<spammer>" -recipient "<recipient>"
 
     Block Sender for the whole company:
-    PS C:\> .\O365Ninja-SRP.ps1 -blockSender -sender "<spammer>"
+    PS C:\> .\O365Ninja.ps1 -blockSender -sender "<spammer>"
     
     Reset End User's Password:
-    PS C:\> .\O365Ninja-SRP.ps1 -resetPassword -targetMailbox "User.Name"
+    PS C:\> .\O365Ninja.ps1 -resetPassword -targetMailbox "User.Name"
 
     ************************************************************
 
@@ -515,9 +517,12 @@ public class TrustAllCertsPolicy : ICertificatePolicy {
 
     $token = "Bearer $caseAPItoken"
     $caseURL = "https://$LogRhythmHost/lr-case-api/cases/"
+    $listUrl = "https://$LogRhythmHost/lr-admin-api/lists/"
     $headers = New-Object "System.Collections.Generic.Dictionary[[String],[String]]"
     $headers.Add("Content-type", "application/json")
     $headers.Add("Authorization", $token)
+    $headers.Add("Count", "100000")
+    $headers.Add("maxItemsThreshold", "10000")
 
     if ( $scrapeMail ) {
         
@@ -628,6 +633,73 @@ public class TrustAllCertsPolicy : ICertificatePolicy {
         $payload = "{ `"text`": `"$note`" }"
         Invoke-RestMethod -uri $noteurl -headers $headers -Method POST -body $payload
 
+    }
+
+    if ( $appendToList ) {
+        
+        if ( $spammerList ) {
+            
+            if ( $sender ) {
+            
+                Write-Host ""
+                Write-Host "Append to List " -ForegroundColor Green
+                Write-Host "================================"
+
+                $output = irm -Uri $listURL -Headers $headers -Method GET
+                $listGuid = @($output | Where-Object name -EQ "$spammerList").guid
+                $listType = @($output | Where-Object name -EQ "$spammerList").listType
+
+                if ( $listType -eq "GeneralValue" ) {
+                    $listType = "StringValue"
+                }
+
+                $listUpdate = $listUrl + $listGuid + "/items/"
+            
+                # ListItemType: List,KnownService,Classification,CommonEvent,KnownHost,IP,IPRange,Location,MsgSource,
+                # MsgSourceType,MPERule,Network,StringValue,Port,PortRange,Protocol,HostName,ADGroup,Entity,RootEntity,
+                # DomainOrigin,Hash,Policy,VendorInfo,Result,ObjectType,CVE,UserAgent,ParentProcessId,ParentProcessName,
+                # ParentProcessPath,SerialNumber,Reason,Status,ThreatId,ThreatName,SessionType,Action,ResponseCode,Identity
+
+                $payload = @('{ "items": 
+ [
+	{
+	    "displayValue": "List",
+	    "expirationDate": null,
+	    "isExpired": false,
+	    "isListItem": false,
+	    "isPattern": false,
+	    "listItemDataType": "List",
+	    "listItemType": "' + $listType + '",
+	    "value": "' + $sender + '",
+	    "valueAsListReference": {}
+	}
+]}')
+                try {
+                
+                    $output = Invoke-RestMethod -Uri $listUpdate -Headers $headers -Method POST -Body $payload
+
+                    Write-Host "Successfully Appended " -NoNewline
+                    Write-Host "$sender" -NoNewline -ForegroundColor Cyan
+                    Write-Host " To List " -NoNewline
+                    Write-Host "$spammerList"-ForegroundColor Cyan
+
+                } catch {
+                
+                    Write-Host "Failed To Append " -ForegroundColor Red -NoNewline
+                    Write-Host "$sender" -NoNewline
+                    Write-Host " To List " -NoNewline -ForegroundColor Red
+                    Write-Host "$spammerList"
+                }
+
+                Write-Host "================================"
+                Write-Host ""
+
+            } else {
+                Write-Host "-sender variable is required for the blocklist" -ForegroundColor Red
+            } 
+        } else {
+            Write-Host "-spammerList variable is required for the blocklist" -ForegroundColor Red
+        }
     }
 
     Write-Output "Email Actions Completed and LogRhythm Case has been generated"

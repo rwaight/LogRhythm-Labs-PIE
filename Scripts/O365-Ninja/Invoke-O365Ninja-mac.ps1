@@ -1,6 +1,6 @@
 ﻿
   #====================================#
-  #       Office 365 Ninja             #
+  #    Office 365 Ninja - OS X         #
   # LogRhythm Security Operations      #
   # greg . foss @ logrhythm . com      #
   # v2.0  --  August, 2018             #
@@ -22,7 +22,7 @@ USAGE:
 
     Run the following command for a list of options associated with this script:
 
-        PS C:\> Invoke-O365Ninja -help
+        PS /> Invoke-O365Ninja -help
 
 #>
 
@@ -55,7 +55,6 @@ param(
     [switch]$appendToList,
     [switch]$checkForwards,
     [switch]$checkMemberships,
-    [switch]$auditMailboxes,
     [switch]$bypass,
     [switch]$nuke = $false
 )
@@ -65,7 +64,7 @@ $banner = @"
    ___ ____  __ ___   _  _ _       _      
   / _ \__ / / /| __| | \| (_)_ _  (_)__ _ 
  | (_) |_ \/ _ \__ \ | .' | | ' \ | / _' |
-  \___/___/\___/___/ |_|\_|_|_||_|/ \__,_|
+  \___/___/\___/___/ |_|\_|_|_||_|/ \__,_|  OSX
                                 |__/      
 "@
 
@@ -73,62 +72,59 @@ $usage = @"
 USAGE:
 
     Search through mail logs:
-    PS C:\> Invoke-O365Ninja -searchMail
+    PS /> Invoke-O365Ninja -searchMail
 
     Available switches for mail search:
         -sender, -recipient, -fromIP
 
     Capture A Specific Email:
-    PS C:\> Invoke-O365Ninja -getMail -targetUser "<user.name>" -sender "<spammer>"
+    PS /> Invoke-O365Ninja -getMail -targetUser "<user.name>" -sender "<spammer>"
 
     Quarantine A Specific Email:
-    PS C:\> Invoke-O365Ninja -getMail -targetUser "<user.name>" -sender "<spammer>" -nuke
+    PS /> Invoke-O365Ninja -getMail -targetUser "<user.name>" -sender "<spammer>" -nuke
 
         Available switches for targeted mail capture:
             -sender, -subject, -recipient
     
     Capture All Emails:
-    PS C:\> Invoke-O365Ninja -scrapeMail -sender "<spammer>"
+    PS /> Invoke-O365Ninja -scrapeMail -sender "<spammer>"
 
     Quarantine All Emails Matching Defined Criteria:
-    PS C:\> Invoke-O365Ninja -scrapeMail -sender "<spammer>" -nuke
+    PS /> Invoke-O365Ninja -scrapeMail -sender "<spammer>" -nuke
 
         Available switches for quarantine / extraction:
             -sender, -subject, -recipient
     
     Block Sender for specific user:
-    PS C:\> Invoke-O365Ninja -blockSender -sender "<spammer>" -recipient "<recipient>"
+    PS /> Invoke-O365Ninja -blockSender -sender "<spammer>" -recipient "<recipient>"
 
     Block Sender for the whole company:
-    PS C:\> Invoke-O365Ninja -blockSender -sender "<spammer>"
+    PS /> Invoke-O365Ninja -blockSender -sender "<spammer>"
 
     Remove Sender from block list for specific user:
-    PS C:\> Invoke-O365Ninja -unblockSender -sender "<not spammer>" -recipient "<recipient>"
+    PS /> Invoke-O365Ninja -unblockSender -sender "<not spammer>" -recipient "<recipient>"
 
     Remove Sender from block list for the whole company:
-    PS C:\> Invoke-O365Ninja -unblockSender -sender "<not spammer>"
+    PS /> Invoke-O365Ninja -unblockSender -sender "<not spammer>"
     
     Reset End User's Password:
-    PS C:\> Invoke-O365Ninja -resetPassword -targetMailbox "User.Name"
+    PS /> Invoke-O365Ninja -resetPassword -targetMailbox "User.Name"
 
     Add Spammer to Threat List:
-    PS C:\> Invoke-O365Ninja -appendToList -sender "<sender@email>" -spammerList "<LogRhythm List Name>"
+    PS /> Invoke-O365Ninja -appendToList -sender "<sender@email>" -spammerList "<LogRhythm List Name>"
     
     Check Auto Forwarding Rules:
-    PS C:\> Invoke-O365Ninja -checkForwards
+    PS /> Invoke-O365Ninja -checkForwards
 
     Obtain Group Memberships:
-    PS C:\> Invoke-O365Ninja -checkMemberships
-    
-    Audit Mailboxes for new O365 Accounts:
-    PS C:\> Invoke-O365Ninja -auditMailboxes
+    PS /> Invoke-O365Ninja -checkMemberships
 
     ************************************************************
 
     All arguments require administrative access to Office 365, and must include the following parameters / supply them at runtime
         -username, -password, -socMailbox
 
-        -encodedXMLCredentials "C:\File-location.xml"
+        -encodedXMLCredentials "/File-location.xml"
 
         This value can be used if you would like to store your credentials in an encoded XML file
 
@@ -165,15 +161,17 @@ $12Hours = ((Get-Date).ToUniversalTime()).AddHours(-12)
 
 # folder structure and global parameters
 $companyDomain = $socMailbox.Split("@")[1]
-$currentFolder = (Get-Item -Path ".\" -Verbose).FullName
-$tmPIEfolder = "$currentFolder\TemporaryPIE\"
-mkdir $tmPIEfolder > $null
+$currentFolder = (Get-Item -Path "./" -Verbose).FullName
+$tmPIEfolder = "$currentFolder/TemporaryPIE/"
+if(!(Test-Path -Path $tmPIEfolder )){
+    New-Item -ItemType directory -Path $tmPIEfolder > $null
+}
 
-$traceLog = "$tmPIEfolder\ongoing-trace-log.csv"
-$phishLog = "$tmPIEfolder\ongoing-phish-log.csv"
-$analysisLog = "$tmPIEfolder\analysis.csv"
-$tmpLog = "$tmPIEfolder\srp-tmp.csv"
-$tmpFolder = "$tmPIEfolder\tmp\"
+$traceLog = "$tmPIEfolder/ongoing-trace-log.csv"
+$phishLog = "$tmPIEfolder/ongoing-phish-log.csv"
+$analysisLog = "$tmPIEfolder/analysis.csv"
+$tmpLog = "$tmPIEfolder/srp-tmp.csv"
+$tmpFolder = "$tmPIEfolder/tmp/"
 
 Write-Host $banner -ForegroundColor Green
 Write-Host ""
@@ -188,7 +186,7 @@ if ( $encodedXMLCredentials ) {
 #     This file will need to be re-generated whenever your system reboots!
 #
 #     To generate the XML:
-#          PS C:\> Get-Credential | Export-Clixml Service-Account_cred.xml
+#          PS /> Get-Credential | Export-Clixml Service-Account_cred.xml
 
     $CredentialsFile = "$encodedXMLCredentials"
     try {
@@ -197,6 +195,9 @@ if ( $encodedXMLCredentials ) {
         $Password = $cred.GetNetworkCredential().Password
     } catch {
         Write-Error ("Could not find credentials file: " + $CredentialsFile)
+        if(!(Test-Path -Path $tmPIEfolder )){
+            New-Item -ItemType directory -Path $tmPIEfolder
+        }
         Break;
     }
 }
@@ -214,6 +215,9 @@ try {
 } Catch {
     Write-Host "Access Denied..."
     Write-Host ""
+    if(!(Test-Path -Path $tmPIEfolder )){
+        New-Item -ItemType directory -Path $tmPIEfolder
+    }
     break;
 }
 
@@ -225,6 +229,9 @@ if ( $getMail ) {
 
     if ( -Not $socMailbox ) {
         Write-Host "Target mailbox -socMailbox is required for this option" -ForegroundColor Red
+        if(!(Test-Path -Path $tmPIEfolder )){
+            New-Item -ItemType directory -Path $tmPIEfolder
+        }
         Break;
     }
     
@@ -253,6 +260,9 @@ if ( $getMail ) {
     } else {
         Write-Host "Target User not specified (-targetUser)" -ForegroundColor Red
         Write-Host ""
+        if(!(Test-Path -Path $tmPIEfolder )){
+            New-Item -ItemType directory -Path $tmPIEfolder
+        }
         break;
     }
 }
@@ -261,20 +271,32 @@ if ( $getMail ) {
 if ( $searchMail ) {
 
     if ( $fromIP ) {
-        Get-MessageTrace -FromIP $fromIP -StartDate $48Hours -EndDate $date | Select MessageTraceID,Received,*Address,*IP,Subject,Status,Size,MessageID | Out-GridView
-        Write-Host "Displaying available results..."
+        Write-Host "================================"
+        Get-MessageTrace -FromIP $fromIP -StartDate $48Hours -EndDate $date | Select Received,*Address,*IP,Subject,Status | Format-Table
+        Write-Host "================================"
+        if(!(Test-Path -Path $tmPIEfolder )){
+            New-Item -ItemType directory -Path $tmPIEfolder
+        }
         break;
     }
 
     if ( $sender ) {
-        Get-MessageTrace -SenderAddress $sender -StartDate $48Hours -EndDate $date | Select MessageTraceID,Received,*Address,*IP,Subject,Status,Size,MessageID | Out-GridView
-        Write-Host "Displaying available results..."
+        Write-Host "================================"
+        Get-MessageTrace -SenderAddress $sender -StartDate $48Hours -EndDate $date | Select Received,*Address,*IP,Subject,Status | Format-Table
+        Write-Host "================================"
+        if(!(Test-Path -Path $tmPIEfolder )){
+            New-Item -ItemType directory -Path $tmPIEfolder
+        }
         break;
     }
 
     if ( $recipient ) {
-        Get-MessageTrace -RecipientAddress $recipient -StartDate $48Hours -EndDate $date | Select MessageTraceID,Received,*Address,*IP,Subject,Status,Size,MessageID | Out-GridView
-        Write-Host "Displaying available results..."
+        Write-Host "================================"
+        Get-MessageTrace -RecipientAddress $recipient -StartDate $48Hours -EndDate $date | Select Received,*Address,*IP,Subject,Status | Format-Table
+        Write-Host "================================"
+        if(!(Test-Path -Path $tmPIEfolder )){
+            New-Item -ItemType directory -Path $tmPIEfolder
+        }
         break;
     }
 }
@@ -283,16 +305,19 @@ if ( $scrapeMail ) {
 
     if ( -Not $socMailbox ) {
         Write-Host "Target mailbox -socMailbox is required for this option" -ForegroundColor Red
+        if(!(Test-Path -Path $tmPIEfolder )){
+            New-Item -ItemType directory -Path $tmPIEfolder
+        }
         Break;
     }
     
     if ( $fromIP ) {
         
         Get-MessageTrace -FromIP $fromIP -StartDate $48Hours -EndDate $date | Select MessageTraceID,Received,*Address,*IP,Subject,Status,Size,MessageID | Export-Csv $tmpLog -NoTypeInformation
-        type $tmpLog | findstr -v "MessageTraceId" > $analysisLog
-        $messageCount = type $analysisLog | findstr -i $sender | Measure-Object | Select-Object Count | findstr -v "Count -"
+        cat $tmpLog | grep -v "MessageTraceId" > $analysisLog
+        $messageCount = cat $analysisLog | grep -i $sender | Measure-Object | Select-Object Count | grep -v "Count -"
         $messageCount = $messageCount.Trim() -match "[0-9+]"
-        type $analysisLog | ForEach-Object { $_.Split(",")[3]  } | Sort | Get-Unique | findstr "@" > $tmPIEfolder\recipients.txt
+        cat $analysisLog | ForEach-Object { $_.Split(",")[3]  } | sort | Get-Unique | grep "@" > $tmPIEfolder/recipients.txt
         #$messageQuery1 = "from:" + '"' + $sender + '"' + " Sent:" + $today
         #$messageQuery2 = "from:" + '"' + $sender + '"' + " Sent:" + $yesterday
         #$messageQuery3 = "from:" + '"' + $sender + '"' + " Sent:" + $dayBefore
@@ -318,17 +343,20 @@ if ( $scrapeMail ) {
                 Write-Host "Error - unable to quarantine mail from $sender as they appear to be an internal employee!" -ForegroundColor Red
                 Write-Host "If you are sure that you would like to proceed, run the script with the -bypass flag set" -ForegroundColor Red
                 Write-Host ""
+                if(!(Test-Path -Path $tmPIEfolder )){
+                    New-Item -ItemType directory -Path $tmPIEfolder
+                }
                 break;
             }
 
         } else {
 
             Get-MessageTrace -SenderAddress $sender -StartDate $48Hours -EndDate $date | Select MessageTraceID,Received,*Address,*IP,Subject,Status,Size,MessageID | Export-Csv $tmpLog -NoTypeInformation
-            type $tmpLog | findstr -v "MessageTraceId" > $analysisLog
-            $messageCount = type $analysisLog | findstr -i $sender | Measure-Object | Select-Object Count | findstr -v "Count -"
+            cat $tmpLog | grep -v "MessageTraceId" > $analysisLog
+            $messageCount = cat $analysisLog | grep -i $sender | Measure-Object | Select-Object Count | grep -v "Count -"
             $messageCount = $messageCount.Trim() -match "[0-9+]"
             $spammer = $sender
-            type $analysisLog | ForEach-Object { $_.Split(",")[3]  } | Sort | Get-Unique | findstr "@" > $tmPIEfolder\recipients.txt
+            cat $analysisLog | ForEach-Object { $_.Split(",")[3]  } | sort | Get-Unique | grep "@" > $tmPIEfolder/recipients.txt
             $messageQuery1 = "from:" + '"' + $sender + '"' + " Sent:" + $today
             $messageQuery2 = "from:" + '"' + $sender + '"' + " Sent:" + $yesterday
             $messageQuery3 = "from:" + '"' + $sender + '"' + " Sent:" + $dayBefore
@@ -346,8 +374,8 @@ if ( $scrapeMail ) {
     if ( $recipient ) {
 
         Get-MessageTrace -RecipientAddress $recipient -StartDate $48Hours -EndDate $date | Select MessageTraceID,Received,*Address,*IP,Subject,Status,Size,MessageID | Export-Csv $tmpLog -NoTypeInformation
-        type $tmpLog | findstr -v "MessageTraceId" > $analysisLog
-        $spammer = type $analysisLog | ForEach-Object { $_.Split(",")[2]  } | Sort | Get-Unique | findstr "@"
+        cat $tmpLog | grep -v "MessageTraceId" > $analysisLog
+        $spammer = cat $analysisLog | ForEach-Object { $_.Split(",")[2]  } | sort | Get-Unique | grep "@"
         
         $senderDomain = $spammer.Split("@")[1]
 
@@ -360,13 +388,16 @@ if ( $scrapeMail ) {
                 Write-Host "Error - unable to quarantine mail from $sender as they appear to be an internal employee!" -ForegroundColor Red
                 Write-Host "If you are sure that you would like to proceed, run the script with the -bypass flag set" -ForegroundColor Red
                 Write-Host ""
+                if(!(Test-Path -Path $tmPIEfolder )){
+                    New-Item -ItemType directory -Path $tmPIEfolder
+                }
                 break;
             }
 
         } else {
         
-            type $analysisLog | ForEach-Object { $_.Split(",")[3]  } | Sort | Get-Unique | findstr "@" > $tmPIEfolder\recipients.txt
-            $messageCount = type $analysisLog | findstr -i $recipient | Measure-Object | Select-Object Count | findstr -v "Count -"
+            cat $analysisLog | ForEach-Object { $_.Split(",")[3]  } | sort | Get-Unique | grep "@" > $tmPIEfolder/recipients.txt
+            $messageCount = cat $analysisLog | grep -i $recipient | Measure-Object | Select-Object Count | grep -v "Count -"
             $messageCount = $messageCount.Trim() -match "[0-9+]"
             $messageQuery1 = "to:" + '"' + $recipient + '"' + " Sent:" + $today
             $messageQuery2 = "to:" + '"' + $recipient + '"' + " Sent:" + $yesterday
@@ -387,13 +418,16 @@ if ( $scrapeMail ) {
             if((Get-MessageTrace -StartDate $12Hours -EndDate $date -PageSize 5000 -Page $c).count -gt 0) {
                 Get-MessageTrace -StartDate $12Hours -EndDate $date -PageSize 5000 -Page $c | Select MessageTraceID,Received,*Address,*IP,Subject,Status,Size,MessageID | Export-Csv $tmpLog -NoTypeInformation -Append
             } else {
+                if(!(Test-Path -Path $tmPIEfolder )){
+                    New-Item -ItemType directory -Path $tmPIEfolder
+                }
                 break;
             }
         }
 
-        $subjectMatches = type $tmpLog | findstr -i "$subject"
-        type $tmpLog | findstr -i "$subject" > $analysisLog
-        $spammer = type $analysisLog | ForEach-Object { $_.Split(",")[2]  } | Sort | Get-Unique | findstr "@"
+        $subjectMatches = cat $tmpLog | grep -i "$subject"
+        cat $tmpLog | grep -i "$subject" > $analysisLog
+        $spammer = cat $analysisLog | ForEach-Object { $_.Split(",")[2]  } | sort | Get-Unique | grep "@"
         
         $senderDomain = $spammer.Split("@")[1]
 
@@ -406,13 +440,16 @@ if ( $scrapeMail ) {
                 Write-Host "Error - unable to quarantine mail from $sender as they appear to be an internal employee!" -ForegroundColor Red
                 Write-Host "If you are sure that you would like to proceed, run the script with the -bypass flag set" -ForegroundColor Red
                 Write-Host ""
+                if(!(Test-Path -Path $tmPIEfolder )){
+                    New-Item -ItemType directory -Path $tmPIEfolder
+                }
                 break;
             }
 
         } else {
         
-            type $analysisLog | ForEach-Object { $_.Split(",")[3]  } | Sort | Get-Unique | findstr "@" > $tmPIEfolder\recipients.txt
-            $messageCount = type $analysis | findstr -i $subject | Measure-Object | Select-Object Count | findstr -v "Count -"
+            cat $analysisLog | ForEach-Object { $_.Split(",")[3]  } | sort | Get-Unique | grep "@" > $tmPIEfolder/recipients.txt
+            $messageCount = cat $analysis | grep -i $subject | Measure-Object | Select-Object Count | grep -v "Count -"
             $messageCount = $messageCount.Trim() -match "[0-9+]"
             $messageQuery1 = "Subject:" + '"' + $subject + '"' + " Sent:" + $today
             $messageQuery2 = "Subject:" + '"' + $subject + '"' + " Sent:" + $yesterday
@@ -429,7 +466,7 @@ if ( $scrapeMail ) {
 
     if ( $nuke -eq $true ) {
     
-        $getUsers = type $tmPIEfolder\recipients.txt
+        $getUsers = cat $tmPIEfolder/recipients.txt
         
         foreach ($phishRecipient in $getUsers) {
         
@@ -456,7 +493,7 @@ if ( $scrapeMail ) {
 
     } else {
 
-        $getUsers = type $tmPIEfolder\recipients.txt
+        $getUsers = cat $tmPIEfolder/recipients.txt
     
         foreach ($phishRecipient in $getUsers) {
         
@@ -477,7 +514,7 @@ if ( $scrapeMail ) {
         echo "Email messages have been extracted to the Phishing Case Inbox for further analysis..."
         echo "To delete the emails run the following PowerShell command:"
         echo ""
-        echo 'PS C:\> Search-Mailbox <end username> -SearchQuery <message query> -TargetMailbox <soc mailbox> -TargetFolder "PROCESSING" -DeleteContent -Force'echo ""
+        echo 'PS /> Search-Mailbox <end username> -SearchQuery <message query> -TargetMailbox <soc mailbox> -TargetFolder "PROCESSING" -DeleteContent -Force'echo ""
         echo "$messageCount - Total Recipients:"
         echo ""
         echo "$getUsers"
@@ -507,32 +544,6 @@ if ( $auditLog ) {
     }
 }
 
-# ================================================================================
-# OFFICE365 ENABLE AUDITING ON MAILBOXES
-# ================================================================================
-
-if ( $auditMailboxes ) {
-
-    Write-Host ""
-    Write-Host "Checking for unaudited mailboxes, limited to 1000 results, then will attempt to enable auditing."
-    # We want to leave this at the default of 1000, and re-run auditMailboxes if needed
-    $UnauditedMailboxes=(Get-Mailbox -Filter {AuditEnabled -eq $false}).Identity
-    $UAMBCount=$UnauditedMailboxes.Count
-    
-    if ($UAMBCount -gt 0){
-        Write-Host "Attempting to enable auditing on $UAMBCount mailboxes, please wait..." -ForegroundColor Cyan
-        $UnauditedMailboxes | % { Set-Mailbox -Identity $_ -AuditDelegate SendAs,SendOnBehalf,Create,Update,SoftDelete,HardDelete -AuditEnabled $true }
-        Write-Host "Finished attempting to enable auditing on $UAMBCount mailboxes." -ForegroundColor Yellow
-    }
-    
-    if ($UAMBCount -eq 1000){    
-        Write-Host "Since the count was $UAMBCount mailboxes, execute auditMailboxes again until auditing is enabled on all mailboxes" -ForegroundColor Yellow        
-    }
-    
-    if ($UAMBCount -eq 0){Write-Host "No auditing actions to perform, all mailboxes have auditing enabled!"}
-    
-}
-
 
 # ================================================================================
 # OFFICE365 ADMINISTRATIVE ACTIONS
@@ -544,7 +555,7 @@ if ( $resetPassword ) {
 
         $newPassword = ([System.Web.Security.Membership]::GeneratePassword(16,2))
         Set-MsolUserPassword –UserPrincipalName $targetUser –NewPassword $newPassword -ForceChangePassword $True
-        Write-Output "We've set the password for the account $targetUser to be $newPassword. Make sure you record this and share with the user, or be ready to reset the password again. They will have to reset their password on the next logon."
+        Write-Host "We've set the password for the account $targetUser to be $newPassword. Make sure you record this and share with the user, or be ready to reset the password again. They will have to reset their password on the next logon."
     
         #Set-MsolUser -UserPrincipalName $targetMailbox -StrongPasswordRequired $True
         #Write-Output "We've also set this user's account to require a strong password."
@@ -584,20 +595,20 @@ if ( $blockSender ) {
         } else {
             
             Get-MessageTrace -SenderAddress $sender -StartDate $48Hours -EndDate $date | Select MessageTraceID,Received,*Address,*IP,Subject,Status,Size,MessageID | Export-Csv $tmpLog -NoTypeInformation
-            type $tmpLog | findstr -v "MessageTraceId" > $analysisLog
-            $messageCount = type $analysisLog | findstr -i $sender | Measure-Object | Select-Object Count | findstr -v "Count -"
+            cat $tmpLog | grep -v "MessageTraceId" > $analysisLog
+            $messageCount = cat $analysisLog | grep -i $sender | Measure-Object | Select-Object Count | grep -v "Count -"
             $messageCount = $messageCount.Trim() -match "[0-9+]"
             $spammer = $sender
-            type $analysisLog | ForEach-Object { $_.Split(",")[3]  } | Sort | Get-Unique | findstr "@" > $tmPIEfolder\recipients.txt
+            cat $analysisLog | ForEach-Object { $_.Split(",")[3]  } | sort | Get-Unique | grep "@" > $tmPIEfolder/recipients.txt
             
             Write-Host ""
             Write-Host "Blocking ($sender) from sending mail to $messageCount recipients. This may take a few minutes..."
             Write-Host ""
 
-            $getUsers = type $tmPIEfolder\recipients.txt
+            $getUsers = cat $tmPIEfolder/recipients.txt
             $recipients = $getUsers.Split('"')[1]
 
-            $messageRecipients = (Get-Content "$tmPIEfolder\recipients.txt") -join ", "
+            $messageRecipients = (Get-Content "$tmPIEfolder/recipients.txt") -join ", "
             $messageRecipients = $messageRecipients -replace '"', ""
 
             foreach ($phishRecipient in $getUsers) {
@@ -663,20 +674,20 @@ if ( $unblockSender ) {
         } else {
             
             Get-MessageTrace -SenderAddress $sender -StartDate $48Hours -EndDate $date | Select MessageTraceID,Received,*Address,*IP,Subject,Status,Size,MessageID | Export-Csv $tmpLog -NoTypeInformation
-            type $tmpLog | findstr -v "MessageTraceId" > $analysisLog
-            $messageCount = type $analysisLog | findstr -i $sender | Measure-Object | Select-Object Count | findstr -v "Count -"
+            cat $tmpLog | grep -v "MessageTraceId" > $analysisLog
+            $messageCount = cat $analysisLog | grep -i $sender | Measure-Object | Select-Object Count | grep -v "Count -"
             $messageCount = $messageCount.Trim() -match "[0-9+]"
             $spammer = $sender
-            type $analysisLog | ForEach-Object { $_.Split(",")[3]  } | Sort | Get-Unique | findstr "@" > $tmPIEfolder\recipients.txt
+            cat $analysisLog | ForEach-Object { $_.Split(",")[3]  } | sort | Get-Unique | grep "@" > $tmPIEfolder/recipients.txt
             
             Write-Host ""
             Write-Host "Unblocking ($sender) to allow mail to be sent to $messageCount recipients. This may take a few minutes..."
             Write-Host ""
 
-            $getUsers = type $tmPIEfolder\recipients.txt
+            $getUsers = cat $tmPIEfolder/recipients.txt
             $recipients = $getUsers.Split('"')[1]
 
-            $messageRecipients = (Get-Content "$tmPIEfolder\recipients.txt") -join ", "
+            $messageRecipients = (Get-Content "$tmPIEfolder/recipients.txt") -join ", "
             $messageRecipients = $messageRecipients -replace '"', ""
 
             foreach ($phishRecipient in $getUsers) {
@@ -721,7 +732,7 @@ if ( $checkForwards ) {
 
 if ( $checkMemberships ) {
 
-    Get-UnifiedGroup | Sort-Object GroupMemberCount -Descending | Select-Object DisplayName,PrimarySmtpAddress,ManagedBy,GroupMemberCount,GroupExternalMemberCount,WhenCreated,WhenChanged,Notes | Out-GridView
+    Get-UnifiedGroup | sort-Object GroupMemberCount -Descending | Select-Object DisplayName,PrimarySmtpAddress,ManagedBy,GroupMemberCount,GroupExternalMemberCount,WhenCreated,WhenChanged,Notes | Out-GridView
     $Groups = Get-UnifiedGroup -Filter {GroupExternalMemberCount -gt 0}
     
     if ( $groups -gt 0 ) {
@@ -748,23 +759,6 @@ if ( $checkMemberships ) {
 # ================================================================================
 
 if ( $caseAPItoken ) {
-
-    #force TLS v1.2 required by caseAPI
-    [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-
-    # Ignore invalid SSL certification warning
-add-type @"
-using System.Net;
-using System.Security.Cryptography.X509Certificates;
-public class TrustAllCertsPolicy : ICertificatePolicy {
-    public bool CheckValidationResult(
-        ServicePoint srvPoint, X509Certificate certificate,
-        WebRequest request, int certificateProblem) {
-        return true;
-    }
-}
-"@
-    [System.Net.ServicePointManager]::CertificatePolicy = New-Object TrustAllCertsPolicy
 
     $token = "Bearer $caseAPItoken"
     $caseURL = "https://$LogRhythmHost/lr-case-api/cases/"
@@ -816,7 +810,7 @@ public class TrustAllCertsPolicy : ICertificatePolicy {
 ]}')
                 try {
                 
-                    $output = Invoke-RestMethod -Uri $listUpdate -Headers $headers -Method POST -Body $payload
+                    $output = Invoke-RestMethod -Uri $listUpdate -Headers $headers -Method POST -Body $payload -SkipCertificateCheck
 
                     Write-Host "Successfully Appended " -NoNewline
                     Write-Host "$sender" -NoNewline -ForegroundColor Cyan
@@ -862,7 +856,7 @@ public class TrustAllCertsPolicy : ICertificatePolicy {
 
             # CREATE CASE
             $payload = "{ `"name`": `"$caseName`", `"priority`": $casePriority, `"summary`": `"$caseSummary`" }"
-            $output = Invoke-RestMethod -Uri $caseURL -Headers $headers -Method POST -Body $payload
+            $output = Invoke-RestMethod -Uri $caseURL -Headers $headers -Method POST -Body $payload -SkipCertificateCheck
             $caseNumber = $output.number
             $noteurl = $caseURL + "number/$caseNumber/evidence/note"
             sleep 5
@@ -878,33 +872,33 @@ public class TrustAllCertsPolicy : ICertificatePolicy {
             Write-Host "$caseSummary" -ForegroundColor Cyan
 
             # Update Case with raw logs
-            $caseNote = type $analysisLog
+            $caseNote = cat $analysisLog
             $caseNote = $caseNote -replace '"', ""
             $note = "Raw Phishing Logs: $caseNote"
             
             Write-Host "Adding Case Note:"
             Write-Host "$note" -ForegroundColor Cyan
             $payload = "{ `"text`": `"$note`" }"
-            $output = Invoke-RestMethod -uri $noteurl -headers $headers -Method POST -body $payload
+            $output = Invoke-RestMethod -uri $noteurl -headers $headers -Method POST -body $payload -SkipCertificateCheck
 
             # Append List of Email Recipients
-            $messageRecipients = (Get-Content "$tmPIEfolder\recipients.txt") -join ", "
+            $messageRecipients = (Get-Content "$tmPIEfolder/recipients.txt") -join ", "
             $messageRecipients = $messageRecipients -replace '"', ""
             $note = "Email Recipients: $messageRecipients"
             
             Write-Host "Appending List of Recipients to the case:"
             Write-Host "$note" -ForegroundColor Cyan
             $payload = "{ `"text`": `"$note`" }"
-            $output = Invoke-RestMethod -uri $noteurl -headers $headers -Method POST -body $payload
+            $output = Invoke-RestMethod -uri $noteurl -headers $headers -Method POST -body $payload -SkipCertificateCheck
 
             # Send the datas
-            $output = Invoke-RestMethod -Uri $caseURL -Headers $headers -Method GET
+            $output = Invoke-RestMethod -Uri $caseURL -Headers $headers -Method GET -SkipCertificateCheck
             $output = $output | Select-Object number, id | Where-Object number -EQ $caseNumber
             $caseUUID = $output.id
 
             # Tag The Case
             $tagUrl = "https://$LogRhythmHost/lr-case-api/tags/"
-            $output = Invoke-RestMethod -Uri $tagUrl -Headers $headers -Method GET
+            $output = Invoke-RestMethod -Uri $tagUrl -Headers $headers -Method GET -SkipCertificateCheck
             $tagNumber = @($output | Select-Object number, text | Where-Object text -EQ "$defaultCaseTag").number
             $tagUrl = $caseUrl + "/$caseUUID/actions/addTags"
 
@@ -912,7 +906,7 @@ public class TrustAllCertsPolicy : ICertificatePolicy {
             Write-Host "`"$defaultCaseTag`"" -ForegroundColor Cyan
 
             $payload = "{ `"numbers`": `[$tagNumber`] }"
-            $output = Invoke-RestMethod -Uri $tagUrl -Headers $headers -Method PUT -Body $payload
+            $output = Invoke-RestMethod -Uri $tagUrl -Headers $headers -Method PUT -Body $payload -SkipCertificateCheck
         }
 
         # Update Case status
@@ -921,7 +915,7 @@ public class TrustAllCertsPolicy : ICertificatePolicy {
         Write-Host "Adding Case Note:"
         Write-Host "$note" -ForegroundColor Cyan
         $payload = "{ `"text`": `"$note`" }"
-        $output = Invoke-RestMethod -uri $noteurl -headers $headers -Method POST -body $payload
+        $output = Invoke-RestMethod -uri $noteurl -headers $headers -Method POST -body $payload -SkipCertificateCheck
 
     }
 
@@ -938,7 +932,7 @@ public class TrustAllCertsPolicy : ICertificatePolicy {
 
             # CREATE CASE
             $payload = "{ `"name`": `"$caseName`", `"priority`": $casePriority, `"summary`": `"$caseSummary`" }"
-            $output = Invoke-RestMethod -uri $caseURL -headers $headers -Method POST -body $payload
+            $output = Invoke-RestMethod -uri $caseURL -headers $headers -Method POST -body $payload -SkipCertificateCheck
             $caseNumber = $output.number
             sleep 5
 
@@ -960,11 +954,11 @@ public class TrustAllCertsPolicy : ICertificatePolicy {
         Write-Host "Adding Case Note:"
         Write-Host "$note" -ForegroundColor Cyan
         $payload = "{ `"text`": `"$note`" }"
-        $output = Invoke-RestMethod -uri $noteurl -headers $headers -Method POST -body $payload
+        $output = Invoke-RestMethod -uri $noteurl -headers $headers -Method POST -body $payload -SkipCertificateCheck
 
         # Tag The Case
         $tagUrl = "https://$LogRhythmHost/lr-case-api/tags/"
-        $output = Invoke-RestMethod -Uri $tagUrl -Headers $headers -Method GET
+        $output = Invoke-RestMethod -Uri $tagUrl -Headers $headers -Method GET -SkipCertificateCheck
         $tagNumber = @($output | Select-Object number, text | Where-Object text -EQ "password reset").number
         $tagUrl = $caseUrl + "/$caseUUID/actions/addTags"
 
@@ -972,7 +966,7 @@ public class TrustAllCertsPolicy : ICertificatePolicy {
         Write-Host "`"password reset`"" -ForegroundColor Cyan
 
         $payload = "{ `"numbers`": `[$tagNumber`] }"
-        $output = Invoke-RestMethod -Uri $tagUrl -Headers $headers -Method PUT -Body $payload
+        $output = Invoke-RestMethod -Uri $tagUrl -Headers $headers -Method PUT -Body $payload -SkipCertificateCheck
 
     }
 
@@ -989,7 +983,7 @@ public class TrustAllCertsPolicy : ICertificatePolicy {
             
             # CREATE CASE
             $payload = "{ `"name`": `"$caseName`", `"priority`": $casePriority, `"summary`": `"$caseSummary`" }"
-            $output = Invoke-RestMethod -uri $caseURL -headers $headers -Method POST -body $payload
+            $output = Invoke-RestMethod -uri $caseURL -headers $headers -Method POST -body $payload -SkipCertificateCheck
             $caseNumber = $output.number
             sleep 5
 
@@ -1008,7 +1002,7 @@ public class TrustAllCertsPolicy : ICertificatePolicy {
         if ( $recipient ) {
             $caseStatus = "The sender ($sender) has been blocked from sending ($recipient) further messages"
         } else {
-            $messageRecipients = (Get-Content "$tmPIEfolder\recipients.txt") -join ", "
+            $messageRecipients = (Get-Content "$tmPIEfolder/recipients.txt") -join ", "
             $messageRecipients = $messageRecipients -replace '"', ""
             $caseStatus = "The sender ($sender) has been blocked from sending further messages to $messageCount email addresses."
         }
@@ -1019,11 +1013,11 @@ public class TrustAllCertsPolicy : ICertificatePolicy {
         Write-Host "Adding Case Note:"
         Write-Host "$note" -ForegroundColor Cyan
         $payload = "{ `"text`": `"$note`" }"
-        $output = Invoke-RestMethod -uri $noteurl -headers $headers -Method POST -body $payload
+        $output = Invoke-RestMethod -uri $noteurl -headers $headers -Method POST -body $payload -SkipCertificateCheck
 
         # Tag The Case
         $tagUrl = "https://$LogRhythmHost/lr-case-api/tags/"
-        $output = Invoke-RestMethod -Uri $tagUrl -Headers $headers -Method GET
+        $output = Invoke-RestMethod -Uri $tagUrl -Headers $headers -Method GET -SkipCertificateCheck
         $tagNumber = @($output | Select-Object number, text | Where-Object text -EQ "sender blocked").number
         $tagUrl = $caseUrl + "/$caseUUID/actions/addTags"
 
@@ -1031,18 +1025,18 @@ public class TrustAllCertsPolicy : ICertificatePolicy {
         Write-Host "`"sender blocked`"" -ForegroundColor Cyan
 
         $payload = "{ `"numbers`": `[$tagNumber`] }"
-        $output = Invoke-RestMethod -Uri $tagUrl -Headers $headers -Method PUT -Body $payload
+        $output = Invoke-RestMethod -Uri $tagUrl -Headers $headers -Method PUT -Body $payload -SkipCertificateCheck
 
     }
 
     # Add Case User and assign ownership
     if ( $addCaseUser ) {
         $userLookup = "https://$LogRhythmHost/lr-case-api/persons/"
-        $output = Invoke-RestMethod -Uri $userLookup -Headers $headers -Method GET
+        $output = Invoke-RestMethod -Uri $userLookup -Headers $headers -Method GET -SkipCertificateCheck
         $userNumber = @($output | Select-Object number, name | Where-Object name -EQ "$addCaseUser").number
 
         # Find Case UUID
-        $output = Invoke-RestMethod -Uri $caseURL -Headers $headers -Method GET
+        $output = Invoke-RestMethod -Uri $caseURL -Headers $headers -Method GET -SkipCertificateCheck
         $output = $output | Select-Object number, id | Where-Object number -EQ $caseNumber
         $caseUUID = $output.id
 
@@ -1053,7 +1047,7 @@ public class TrustAllCertsPolicy : ICertificatePolicy {
         Write-Host "to Case:: " -NoNewline
         Write-Host "`"$caseNumber`"" -ForegroundColor Cyan
         $payload = "{ `"numbers`": `[$userNumber`] }"
-        $output = Invoke-RestMethod -Uri $userQuery -Headers $headers -Method PUT -Body $payload
+        $output = Invoke-RestMethod -Uri $userQuery -Headers $headers -Method PUT -Body $payload -SkipCertificateCheck
 
         # Update Case Owner
         $userUpdate = $caseURL + "/$caseUUID/actions/changeOwner/"
@@ -1062,11 +1056,10 @@ public class TrustAllCertsPolicy : ICertificatePolicy {
         Write-Host "owner to:: " -NoNewline
         Write-Host "`"$addCaseUser`"" -ForegroundColor Cyan
         $payload = "{ `"number`": $userNumber }"
-        $output = Invoke-RestMethod -Uri $userUpdate -Headers $headers -Method PUT -Body $payload
+        $output = Invoke-RestMethod -Uri $userUpdate -Headers $headers -Method PUT -Body $payload -SkipCertificateCheck
     }
 
 }
-
 
 # clean up and clear all variables
 Remove-PSSession $Session
